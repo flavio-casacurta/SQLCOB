@@ -40,6 +40,9 @@ htmlcov/
 nosetests.xml
 coverage.xml
 
+# Mr Developer
+.idea
+
 # Translations
 *.mo
 *.pot
