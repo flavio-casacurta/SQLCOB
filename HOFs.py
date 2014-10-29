@@ -12,3 +12,4 @@ isProcedure = lambda line: truth(procRe.findall(line))
 l672 = lambda line: line[6:72].rstrip()
 isNotBlank = lambda line: len(l672(line).strip()) > 0
 issql = lambda line: truth(line[6:7] == '*' and (' SQL ' in line or '*SQL ' in line))
+unRemarks = lambda line: line[:6]+' '+line[7:]
