@@ -10,7 +10,7 @@ dicval = {'CHAR'     : "' '"
          ,'VARCHAR'  : "' '"}
 
 dicpte = {'INCLUDE'  : '.'
-         ,'DECLARE'  : '.'
+         ,'DECLARE'  : ''
          ,'OPEN'     : ''
          ,'FETCH'    : ''
          ,'CLOSE'    : ''
@@ -24,8 +24,10 @@ class Sql(object):
     def __init__(self, diccnfg, include, cmds):
         self.diccnfg = diccnfg
         self.include = include
+        self.table = ''
         self.cmds = cmds
         self.possql = 0
+        self.poscmd = 0
         self.ptsql = ''
         self.cmd = ''
         self.n = 0
@@ -38,8 +40,7 @@ class Sql(object):
         while True:
             try:
                 if issql(line):
-                    self.cmd = nextWord('SQL', line)
-                    line = eval('self.proc{}(lines, ilines)'.format(self.cmd))
+                    line = self.procs(lines, ilines)
                 else:
                     self.n += 1
                     line = ilines.next()
@@ -48,17 +49,22 @@ class Sql(object):
         return lines
 
 
+    def procs(self, lines, ilines):
+        line = lines[self.n]
+        self.cmd = nextWord('SQL', line)
+        eval('self.proc{}(lines, ilines)'.format(self.cmd))
+        self.n += 1
+        return ilines.next()
+
+
     def procINCLUDE(self, lines, ilines):
         line = lines[self.n]
         if nextWord('INCLUDE', line) == 'FROM':
-            self.table =  nextWord('FROM', line)
+            self.table = nextWord('FROM', line)
             if '.' in self.table:
                 self.table = self.table.split('.')[0]
-        lines[self.n] = '{:11}EXEC SQL  INCLUDE {:10}END-EXEC.\n'.format('', self.include[self.table].DCLGEN)
+        lines[self.n] = '{:11}EXEC SQL INCLUDE {:11}END-EXEC.\n'.format('', self.include[self.table].DCLGEN)
         odcl = self.diccnfg['PREREG'] + self.table.replace('_', '-')
-        self.n += 1
-        line = ilines.next()
-        return line
 
 #    if @table \= 'SQLCA' then
 #       call loadDcl
@@ -67,76 +73,52 @@ class Sql(object):
 # return
 
 
-
     def procDECLARE(self, lines, ilines):
         self.includeExec(lines)
         self.changePlus(lines, ilines)
         self.includeEndExec(lines, ilines)
 
-        self.n += 1
-        line = ilines.next()
-        return line
 
     def procOPEN(self, lines, ilines):
         self.includeExec(lines)
+        self.changePlus(lines, ilines)
         self.includeEndExec(lines, ilines)
 
-        self.n += 1
-        line = ilines.next()
-        return line
 
     def procFETCH(self, lines, ilines):
         self.includeExec(lines)
         self.changePlus(lines, ilines)
         self.includeEndExec(lines, ilines)
 
-        self.n += 1
-        line = ilines.next()
-        return line
 
     def procCLOSE(self, lines, ilines):
         self.includeExec(lines)
+        self.changePlus(lines, ilines)
         self.includeEndExec(lines, ilines)
 
-        self.n += 1
-        line = ilines.next()
-        return line
 
     def procSELECT(self, lines, ilines):
         self.includeExec(lines)
         self.changePlus(lines, ilines)
         self.includeEndExec(lines, ilines)
 
-        self.n += 1
-        line = ilines.next()
-        return line
 
     def procDELETE(self, lines, ilines):
         self.includeExec(lines)
         self.changePlus(lines, ilines)
         self.includeEndExec(lines, ilines)
 
-        self.n += 1
-        line = ilines.next()
-        return line
 
     def procINSERT(self, lines, ilines):
         self.includeExec(lines)
         self.changePlus(lines, ilines)
         self.includeEndExec(lines, ilines)
 
-        self.n += 1
-        line = ilines.next()
-        return line
 
     def procUPDATE(self, lines, ilines):
         self.includeExec(lines)
         self.changePlus(lines, ilines)
         self.includeEndExec(lines, ilines)
-
-        self.n += 1
-        line = ilines.next()
-        return line
 
 
     def includeExec(self, lines):
@@ -148,7 +130,7 @@ class Sql(object):
 
     def includeEndExec(self, lines, ilines):
         self.n += 1
-        lines.insert(self.n, '{:{}}END-EXEC{}\n'.format('', self.possql, self.ptsql))
+        lines.insert(self.n, '{:{}}END-EXEC{}\n'.format('', self.poscmd, self.ptsql))
         line = ilines.next()
 
 
@@ -156,13 +138,16 @@ class Sql(object):
         line = lines[self.n]
         while sanitize(line).endswith('+'):
             lines[self.n] = unRemarks(line.replace('+\n', '\n'))
+            self.align(lines)
             self.n += 1
             line = ilines.next()
         lines[self.n] = unRemarks(line)
+        self.align(lines)
 
 
     def setptsql(self, lines):
         pt = dicpte[self.cmd]
+        self.poscmd = 12
         if pt == '':
             n = self.n - 1
             while isRem(lines[n]):
@@ -174,12 +159,16 @@ class Sql(object):
                     break
                 wrd = words(lines[n])[1][0]
                 if wrd in self.cmds:
-                    self.possql = lines[n].index(wrd)
+                    self.poscmd = lines[n].index(wrd)
                     if wrd in 'IF AND OR ELSE':
-                        self.possql += 5
+                        self.poscmd += 5
                     elif wrd == 'PERFORM' and 'UNTIL' in lines[n]:
-                        self.possql += 5
+                        self.poscmd += 5
                     break
                 n -= 1
         return pt
 
+    def align(self, lines):
+        if self.poscmd > self.possql:
+            line = lines[self.n]
+            lines[self.n] = '{}{}{}'.format(line[:7], ' ' * (self.poscmd - self.possql), line[7:])
