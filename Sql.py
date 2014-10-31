@@ -21,11 +21,12 @@ dicpte = {'INCLUDE'  : '.'
 
 class Sql(object):
 
-    def __init__(self, diccnfg, include, cmds):
+    def __init__(self, diccnfg, include, tables, cmds):
         self.diccnfg = diccnfg
         self.include = include
-        self.table = ''
+        self.tables = tables
         self.cmds = cmds
+        self.table = ''
         self.possql = 0
         self.poscmd = 0
         self.ptsql = ''
@@ -63,7 +64,7 @@ class Sql(object):
             self.table = nextWord('FROM', line)
             if '.' in self.table:
                 self.table = self.table.split('.')[0]
-        lines[self.n] = '{:11}EXEC SQL INCLUDE {:11}END-EXEC.\n'.format('', self.include[self.table].DCLGEN)
+        lines[self.n] = '{:11}EXEC SQL INCLUDE {:11}END-EXEC.\n'.format('', self.include[self.table].dclgen)
         odcl = self.diccnfg['PREREG'] + self.table.replace('_', '-')
 
 #    if @table \= 'SQLCA' then
