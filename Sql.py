@@ -26,7 +26,9 @@ class Sql(object):
         self.include = include
         self.tables = tables
         self.cmds = cmds
+        self.prereg = self.diccnfg['PREREG']
         self.table = ''
+        self.lnproc = 0
         self.possql = 0
         self.poscmd = 0
         self.ptsql = ''
@@ -35,6 +37,22 @@ class Sql(object):
 
     def sql(self, arq):
         lines = file(arq).readlines()
+        ilines = iter(lines)
+        self.n = 0
+        line = ilines.next()
+        while True:
+            try:
+                if isProcedure(line):
+                    self.lnproc = self.n
+                    break
+                else:
+                    self.n += 1
+                    line = ilines.next()
+            except StopIteration:
+                break
+
+        self.homogenizaOF(lines, ilines)
+
         ilines = iter(lines)
         self.n = 0
         line = ilines.next()
@@ -64,14 +82,11 @@ class Sql(object):
             self.table = nextWord('FROM', line)
             if '.' in self.table:
                 self.table = self.table.split('.')[0]
-        lines[self.n] = '{:11}EXEC SQL INCLUDE {:11}END-EXEC.\n'.format('', self.include[self.table].dclgen)
-        odcl = self.diccnfg['PREREG'] + self.table.replace('_', '-')
+            lines[self.n] = '{:11}EXEC SQL INCLUDE {:11}END-EXEC.\n'.format('', self.include[self.table].dclgen)
+            odcl = self.prereg + self.table.replace('_', '-')
 
-#    if @table \= 'SQLCA' then
-#       call loadDcl
-#    'x '@fid()' (profile utl_settings'
-#     call changeHosts
-# return
+#      if self.table != 'SQLCA':
+#          changeHosts(odcl, lines, ilines)
 
 
     def procDECLARE(self, lines, ilines):
@@ -173,3 +188,28 @@ class Sql(object):
         if self.poscmd > self.possql:
             line = lines[self.n]
             lines[self.n] = '{}{}{}'.format(line[:7], ' ' * (self.poscmd - self.possql), line[7:])
+
+
+    def homogenizaOF(self, lines, ilines):
+        self.n += 1
+        line = ilines.next()
+        while True:
+            try:
+                if sanitize(line).endswith('OF'):
+                    wrd = words(lines[self.n + 1])[1][0].replace(self.prereg, '').replace('-', '_')
+                    if wrd in self.tables:
+                        wrds = words(line)
+                        fieldof = line[line.index(wrds[1][wrds[0]-2]):].strip()
+                        lines[self.n] = line[:line.index(wrds[1][wrds[0]-2])] + '\n'
+                        self.n += 1
+                        line = ilines.next()
+                        lines[self.n] = line.replace(line.strip(), fieldof + ' ' + line.strip())
+                    else:
+                        self.n += 1
+                        line = ilines.next()
+                else:
+                    self.n += 1
+                    line = ilines.next()
+            except StopIteration:
+                break
+
