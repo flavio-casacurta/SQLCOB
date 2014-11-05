@@ -26,7 +26,7 @@ class Sql(object):
         self.include = include
         self.tables = tables
         self.cmds = cmds
-        self.prereg = self.diccnfg['PREREG']
+        self.prereg = self.diccnfg['prereg']
         self.table = ''
         self.lnproc = 0
         self.possql = 0
@@ -37,9 +37,8 @@ class Sql(object):
 
     def sql(self, arq):
         lines = file(arq).readlines()
-        ilines = iter(lines)
         self.n = 0
-        line = ilines.next()
+        line = lines[self.n]
         while True:
             try:
                 if isProcedure(line):
@@ -47,36 +46,35 @@ class Sql(object):
                     break
                 else:
                     self.n += 1
-                    line = ilines.next()
-            except StopIteration:
+                    line = lines[self.n]
+            except IndexError:
                 break
 
-        self.homogenizaOF(lines, ilines)
+        self.homogenizaOF(lines)
 
-        ilines = iter(lines)
         self.n = 0
-        line = ilines.next()
+        line = lines[self.n]
         while True:
             try:
                 if issql(line):
-                    line = self.procs(lines, ilines)
+                    line = self.procs(lines)
                 else:
                     self.n += 1
-                    line = ilines.next()
-            except StopIteration:
+                    line = lines[self.n]
+            except IndexError:
                 break
         return lines
 
 
-    def procs(self, lines, ilines):
+    def procs(self, lines):
         line = lines[self.n]
         self.cmd = nextWord('SQL', line)
-        eval('self.proc{}(lines, ilines)'.format(self.cmd))
+        eval('self.proc{}(lines)'.format(self.cmd))
         self.n += 1
-        return ilines.next()
+        return lines[self.n]
 
 
-    def procINCLUDE(self, lines, ilines):
+    def procINCLUDE(self, lines):
         line = lines[self.n]
         if nextWord('INCLUDE', line) == 'FROM':
             self.table = nextWord('FROM', line)
@@ -86,55 +84,55 @@ class Sql(object):
             odcl = self.prereg + self.table.replace('_', '-')
 
 #      if self.table != 'SQLCA':
-#          changeHosts(odcl, lines, ilines)
+#          changeHosts(odcl, lines)
 
 
-    def procDECLARE(self, lines, ilines):
+    def procDECLARE(self, lines):
         self.includeExec(lines)
-        self.changePlus(lines, ilines)
-        self.includeEndExec(lines, ilines)
+        self.changePlus(lines)
+        self.includeEndExec(lines)
 
 
-    def procOPEN(self, lines, ilines):
+    def procOPEN(self, lines):
         self.includeExec(lines)
-        self.changePlus(lines, ilines)
-        self.includeEndExec(lines, ilines)
+        self.changePlus(lines)
+        self.includeEndExec(lines)
 
 
-    def procFETCH(self, lines, ilines):
+    def procFETCH(self, lines):
         self.includeExec(lines)
-        self.changePlus(lines, ilines)
-        self.includeEndExec(lines, ilines)
+        self.changePlus(lines)
+        self.includeEndExec(lines)
 
 
-    def procCLOSE(self, lines, ilines):
+    def procCLOSE(self, lines):
         self.includeExec(lines)
-        self.changePlus(lines, ilines)
-        self.includeEndExec(lines, ilines)
+        self.changePlus(lines)
+        self.includeEndExec(lines)
 
 
-    def procSELECT(self, lines, ilines):
+    def procSELECT(self, lines):
         self.includeExec(lines)
-        self.changePlus(lines, ilines)
-        self.includeEndExec(lines, ilines)
+        self.changePlus(lines)
+        self.includeEndExec(lines)
 
 
-    def procDELETE(self, lines, ilines):
+    def procDELETE(self, lines):
         self.includeExec(lines)
-        self.changePlus(lines, ilines)
-        self.includeEndExec(lines, ilines)
+        self.changePlus(lines)
+        self.includeEndExec(lines)
 
 
-    def procINSERT(self, lines, ilines):
+    def procINSERT(self, lines):
         self.includeExec(lines)
-        self.changePlus(lines, ilines)
-        self.includeEndExec(lines, ilines)
+        self.changePlus(lines)
+        self.includeEndExec(lines)
 
 
-    def procUPDATE(self, lines, ilines):
+    def procUPDATE(self, lines):
         self.includeExec(lines)
-        self.changePlus(lines, ilines)
-        self.includeEndExec(lines, ilines)
+        self.changePlus(lines)
+        self.includeEndExec(lines)
 
 
     def includeExec(self, lines):
@@ -144,19 +142,19 @@ class Sql(object):
         self.ptsql = self.setptsql(lines)
 
 
-    def includeEndExec(self, lines, ilines):
+    def includeEndExec(self, lines):
         self.n += 1
         lines.insert(self.n, '{:{}}END-EXEC{}\n'.format('', self.poscmd, self.ptsql))
-        line = ilines.next()
+        line = lines[self.n]
 
 
-    def changePlus(self, lines, ilines):
+    def changePlus(self, lines):
         line = lines[self.n]
         while sanitize(line).endswith('+'):
-            lines[self.n] = unRemarks(line.replace('+\n', '\n'))
+            lines[self.n] = unRemarks(CHANGEPLUS(line))
             self.align(lines)
             self.n += 1
-            line = ilines.next()
+            line = lines[self.n]
         lines[self.n] = unRemarks(line)
         self.align(lines)
 
@@ -190,9 +188,9 @@ class Sql(object):
             lines[self.n] = '{}{}{}'.format(line[:7], ' ' * (self.poscmd - self.possql), line[7:])
 
 
-    def homogenizaOF(self, lines, ilines):
+    def homogenizaOF(self, lines):
         self.n += 1
-        line = ilines.next()
+        line = lines[self.n]
         while True:
             try:
                 if sanitize(line).endswith('OF'):
@@ -202,14 +200,14 @@ class Sql(object):
                         fieldof = line[line.index(wrds[1][wrds[0]-2]):].strip()
                         lines[self.n] = line[:line.index(wrds[1][wrds[0]-2])] + '\n'
                         self.n += 1
-                        line = ilines.next()
+                        line = lines[self.n]
                         lines[self.n] = line.replace(line.strip(), fieldof + ' ' + line.strip())
                     else:
                         self.n += 1
-                        line = ilines.next()
+                        line = lines[self.n]
                 else:
                     self.n += 1
-                    line = ilines.next()
-            except StopIteration:
+                    line = lines[self.n]
+            except IndexError:
                 break
 

@@ -9,6 +9,7 @@ para todos os programs do diret�rio no properties ['DIRSOUPGM'] com a exten�
 '''
 
 import os
+import ConfigParser
 from collections import namedtuple
 from HOFs import *
 from utilities import *
@@ -20,32 +21,33 @@ class Sqlcob(object):
     def __init__(self, properties='pathProp.txt'):
         self.properties = properties
         path = ''.join(open(self.properties).readline().replace("'", "").split())
-        config = file(os.path.join(path, 'config.properties')).readlines()
-        self.diccnfg = {line.split()[0]: line.split()[1] for line in config}
+        config = ConfigParser.ConfigParser()
+        config.read(os.path.join(path, 'properties.cnf'))
+        self.diccnfg = {k: v for k, v in config.items('SQL')}
         self.include = self.loadinclude()[0]
         self.dcltable = self.loadinclude()[1]
         self.tables = self.loadtables()
-        self.cmds = file(r'CBLCMDS.TXT').read().splitlines()
+        self.cmds = file(r'cblcmds.txt').read().splitlines()
         self.sql = Sql(self.diccnfg, self.include, self.tables, self.cmds)
 
 
     def sqlcob(self):
-        ispgm = lambda pgm: pgm[-3:].upper() == self.diccnfg['EXTSOU']
+        ispgm = lambda pgm: pgm[-3:].upper() == self.diccnfg['extsou']
 
         dirfilelist = DirFileList()
-        dirfilelist.setDirFileList(self.diccnfg['DIRSOUPGM'])
+        dirfilelist.setDirFileList(self.diccnfg['dirsoupgm'])
         pgmlist = dirfilelist.getDirFileList()
 
         for pgm in filter(ispgm, pgmlist):
             basename = os.path.basename(pgm)
             print pgm
-            pgmwrite = open('{}'.format(os.path.join(self.diccnfg['DIRCNVPGM'], basename)), 'w')
+            pgmwrite = open('{}'.format(os.path.join(self.diccnfg['dircnvpgm'], basename)), 'w')
             pgmwrite.writelines(self.sql.sql(pgm))
             pgmwrite.close()
 
 
     def loadinclude(self):
-        lines = file('{}'.format(os.path.join(self.diccnfg['DIRDATWOR'], 'include.txt'))).readlines()
+        lines = file('{}'.format(os.path.join(self.diccnfg['dirdatwor'], 'include.txt'))).readlines()
         Attrs = namedtuple('Attrs', ['dclgen', 'prefixo', 'declare'])
         include = {}
         dcltable = {}
@@ -57,9 +59,9 @@ class Sqlcob(object):
 
 
     def loadtables(self):
-        isdcl = lambda dcl: dcl[-3:].upper() == self.diccnfg['EXTCPY']
+        isdcl = lambda dcl: dcl[-3:].upper() == self.diccnfg['extcpy']
         dirfilelist = DirFileList()
-        dirfilelist.setDirFileList(self.diccnfg['DIRSOUDCL'])
+        dirfilelist.setDirFileList(self.diccnfg['dirsoudcl'])
         dcllist = dirfilelist.getDirFileList()
         Attrs = namedtuple('Attrs', ['datatype', 'isnull'])
         tables = {}
@@ -76,6 +78,6 @@ class Sqlcob(object):
                 wrds = words(lines[n])[1]
                 fields[wrds[0]] = Attrs(wrds[1], False if 'NOT NULL' in lines[n] else True)
                 n += 1
-            tables[self.dcltable[basename[:-(len(self.diccnfg['EXTCPY']) + 1)]]] = fields
+            tables[self.dcltable[basename[:-(len(self.diccnfg['extcpy']) + 1)]]] = fields
         return tables
 
