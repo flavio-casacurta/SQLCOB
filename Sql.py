@@ -39,6 +39,8 @@ class Sql(object):
         lines = file(arq).readlines()
         self.n = 0
         line = lines[self.n]
+
+# define a linha da PROCEDURE DIVISION.
         while True:
             try:
                 if isProcedure(line):
@@ -54,6 +56,8 @@ class Sql(object):
 
         self.n = 0
         line = lines[self.n]
+
+# Trata comandos SQL
         while True:
             try:
                 if issql(line):
@@ -82,9 +86,10 @@ class Sql(object):
                 self.table = self.table.split('.')[0]
             lines[self.n] = '{:11}EXEC SQL INCLUDE {:11}END-EXEC.\n'.format('', self.include[self.table].dclgen)
             odcl = self.prereg + self.table.replace('_', '-')
+            debug = True
 
-#      if self.table != 'SQLCA':
-#          changeHosts(odcl, lines)
+        if self.table != 'SQLCA':
+            self.changeHosts(odcl, lines)
 
 
     def procDECLARE(self, lines):
@@ -196,18 +201,69 @@ class Sql(object):
                 if sanitize(line).endswith('OF'):
                     wrd = words(lines[self.n + 1])[1][0].replace(self.prereg, '').replace('-', '_')
                     if wrd in self.tables:
-                        wrds = words(line)
-                        fieldof = line[line.index(wrds[1][wrds[0]-2]):].strip()
-                        lines[self.n] = line[:line.index(wrds[1][wrds[0]-2])] + '\n'
+                        ns = 0
+                        for s in xrange(len(line.rstrip())-1, 0, -1):
+                            if line[s] == ' ':
+                                ns += 1
+                            if ns == 2:
+                                break
+                        fieldof = line[s:].strip()
+                        line = line[:s] + '\n'
+                        lines[self.n] = line
                         self.n += 1
                         line = lines[self.n]
-                        lines[self.n] = line.replace(line.strip(), fieldof + ' ' + line.strip())
+                        line = line.replace(line.strip(), fieldof + ' ' + line.strip())
+                        lines[self.n] = line
                     else:
                         self.n += 1
                         line = lines[self.n]
                 else:
                     self.n += 1
                     line = lines[self.n]
+            except IndexError:
+                break
+
+
+    def changeHosts(self, odcl, lines):
+        n = self.lnproc + 1
+        line = lines[n]
+        while True:
+            try:
+                if isOFOLDDCL(line, odcl):
+                    lsp = line.split()
+                    wpo = lsp.index(odcl)
+                    if wpo < 2:
+                        upn = n - 1
+                        line = lines[upn]
+                        wrds = words(line)
+                        fld = wrds[1][wrds[0]-1]
+                        for s in xrange(len(line.rstrip())-1, 0, -1):
+                            if line[s] == ' ':
+                                break
+                        line = line[:s] + '\n'
+                        lines[upn] = line
+                        line = lines[n]
+                        lines[n] = line.replace(line.strip(), fld + ' ' + line.strip())
+                        line = lines[n]
+                        lsp = line.split()
+                        wpo = lsp.index(odcl)
+                    host = lsp[wpo-2]
+                    newhost = self.include[self.table].prefix + host + ' OF ' + self.include[self.table].declare
+                    line = CHANGEHOST(line, host, odcl, newhost)
+                    lines[n] = line
+                    if len(line.rstrip()) > 72:
+                        for s in xrange(72, 0, -1):
+                            if line[s] == ' ':
+                                break
+                        f = line[s:]
+                        line = line[:s] + '\n'
+                        lines[n] = line
+                        n += 1
+                        lines.insert(n, '{:>73}'.format(f))
+                        line = lines[n]
+                else:
+                    n += 1
+                    line = lines[n]
             except IndexError:
                 break
 

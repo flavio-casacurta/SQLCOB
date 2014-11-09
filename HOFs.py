@@ -14,3 +14,5 @@ isNotBlank = lambda line: len(l672(line).strip()) > 0
 issql = lambda line: truth(line[6:7] == '*' and (' SQL ' in line or '*SQL ' in line))
 unRemarks = lambda line: line[:6]+' '+line[7:]
 CHANGEPLUS = lambda line: re.sub('(\+\s*\n)', '\n', line)
+isOFOLDDCL = lambda line, arg: re.findall(r'OF\s+'+arg, line)
+CHANGEHOST = lambda line, arg1, arg2, arg3: re.sub(arg1+'\s+OF\s+'+arg2, arg3, line)

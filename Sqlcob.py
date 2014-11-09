@@ -48,7 +48,7 @@ class Sqlcob(object):
 
     def loadinclude(self):
         lines = file('{}'.format(os.path.join(self.diccnfg['dirdatwor'], 'include.txt'))).readlines()
-        Attrs = namedtuple('Attrs', ['dclgen', 'prefixo', 'declare'])
+        Attrs = namedtuple('Attrs', ['dclgen', 'prefix', 'declare'])
         include = {}
         dcltable = {}
         for line in lines:
