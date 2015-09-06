@@ -29,6 +29,8 @@ class Sql(object):
         self.prereg = self.diccnfg['prereg']
         self.table = ''
         self.lnproc = 0
+        self.lnstart = 0
+        self.lnstop = 0
         self.possql = 0
         self.poscmd = 0
         self.ptsql = ''
@@ -142,6 +144,7 @@ class Sql(object):
 
     def includeExec(self, lines):
         line = lines[self.n]
+        self.lnstart = self.n
         self.possql = line.index('SQL')
         lines[self.n] = unRemarks(line.replace('SQL', 'EXEC SQL'))
         self.ptsql = self.setptsql(lines)
@@ -151,6 +154,7 @@ class Sql(object):
         self.n += 1
         lines.insert(self.n, '{:{}}END-EXEC{}\n'.format('', self.poscmd, self.ptsql))
         line = lines[self.n]
+        self.lnstop = self.n
 
 
     def changePlus(self, lines):
